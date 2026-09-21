@@ -1,7 +1,7 @@
 /clattermark
 *.log
 *.pid
-config.json
+/config.json
 secrets.json
 dyn_excludes.json
 .idea/

@@ -17,6 +17,29 @@ matches any monitor search and none of that monitor's exclusions.
 `processes.excludes` contains regular expressions matched against the parsed
 process field. Invalid patterns are logged and skipped.
 
+`json_excludes` drops structured noise based on direct fields of a JSON object
+in the parsed message text. Each rule requires a `process` regular expression
+and at least one `boolean_fields` or `empty_array_fields` condition. All
+conditions must match. Missing fields, `null` arrays, malformed JSON, and nested
+fields do not match. For example:
+
+```json
+{
+  "json_excludes": [{
+    "process": "^worker$",
+    "boolean_fields": {"complete": true},
+    "empty_array_fields": ["failures"]
+  }]
+}
+```
+
+## Decision service identity
+
+`decision_service.source` identifies Clattermark to the optional decision
+service and defaults to `clattermark`. The same value is included in feedback
+actions. Keep this value stable during a migration when the downstream service
+uses it for routing, fingerprints, history, or feedback validation.
+
 ## Redis-compatible storage
 
 `keydb.host` is a Redis-compatible `host:port`. The password normally belongs

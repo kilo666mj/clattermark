@@ -21,8 +21,8 @@ dropping lines when alert processing is saturated.
 - Matches named monitor rules expressed as regular expressions.
 - Parses common RFC 3339 syslog envelopes into host, process, PID, timestamp,
   and message fields.
-- Supports static exclusions, process exclusions, and authenticated dynamic
-  exclusions shared through Redis or KeyDB.
+- Supports static, process, and structured-JSON exclusions plus authenticated
+  dynamic exclusions shared through Redis or KeyDB.
 - Deduplicates normalized alerts across replicas with configurable cooldowns.
 - Groups related events into durable incidents and emits periodic and quiet
   notifications.

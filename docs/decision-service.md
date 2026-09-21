@@ -52,3 +52,8 @@ If `feedback_action_target` is configured and an allowed response contains a
 fingerprint and host, Clattermark adds a Tintwire action carrying the service's
 canonical fingerprint. The target is resolved and authenticated by Tintwire;
 Clattermark does not embed decision-service credentials in the card.
+
+`decision_service.source` sets both the request `source` and the feedback
+context `source`. It defaults to `clattermark`. Keep it stable when replacing
+an existing producer if the decision service uses the source in fingerprints,
+history, routing, or feedback validation.

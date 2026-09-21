@@ -70,6 +70,7 @@ type Config struct {
 	StaleAlert          StaleAlertConfig          `json:"stale_alert"`
 	DecisionService     DecisionServiceConfig     `json:"decision_service"`
 	Processes           ProcessConfig             `json:"processes"`
+	JSONExcludes        []JSONExcludeConfig       `json:"json_excludes"`
 	AlertDedup          AlertDedupConfig          `json:"alert_dedup"`
 	Pipeline            PipelineConfig            `json:"pipeline"`
 	IncidentAggregation IncidentAggregationConfig `json:"incident_aggregation"`
@@ -156,6 +157,7 @@ type StaleAlertConfig struct {
 type DecisionServiceConfig struct {
 	Enabled              bool    `json:"enabled"`
 	URL                  string  `json:"url"`
+	Source               string  `json:"source"`
 	Token                string  `json:"token"`
 	TimeoutSeconds       int     `json:"timeout_seconds"`
 	FailOpen             *bool   `json:"fail_open"`
@@ -314,12 +316,15 @@ func matchesProcessExclude(process string, excludes []*regexp.Regexp) bool {
 
 // isNonActionableStructuredLine drops records whose incidental argument or URL
 // text can contain monitor keywords without representing an application error.
-func isNonActionableStructuredLine(parsed map[string]string) bool {
+func isNonActionableStructuredLine(parsed map[string]string, jsonExcludes []jsonExclude) bool {
 	process, text := parsed["process"], parsed["text"]
 	if process == "snapd" && strings.Contains(text, "adjusting startup timeout by ") && strings.Contains(text, "(pessimistic estimate of ") {
 		return true
 	}
-	return strings.HasPrefix(text, "ansible-") && strings.Contains(text, " Invoked with ")
+	if strings.HasPrefix(text, "ansible-") && strings.Contains(text, " Invoked with ") {
+		return true
+	}
+	return matchesJSONExclude(parsed, jsonExcludes)
 }
 
 func checkDynExcludesLine(line string, dynamicExcludes map[string][]string) bool {
@@ -391,6 +396,7 @@ type alertEngine struct {
 	monitors        []monitor
 	dynamicExcludes *dynamicExcludesStore
 	processExcludes []*regexp.Regexp
+	jsonExcludes    []jsonExclude
 	notifier        *notificationClient
 	iconURL         string
 	decisionCfg     DecisionServiceConfig
@@ -413,7 +419,7 @@ func (e *alertEngine) checkLine(line string) {
 					excludeLine = true
 					log.Println("Excluding process exclude line:", line)
 				}
-				if !excludeLine && isNonActionableStructuredLine(parsedLine) {
+				if !excludeLine && isNonActionableStructuredLine(parsedLine, e.jsonExcludes) {
 					excludeLine = true
 					log.Println("Excluding structured noise line:", line)
 				}
@@ -617,12 +623,16 @@ func main() {
 	if len(processExcludes) > 0 {
 		log.Printf("process excludes active: %d pattern(s)", len(processExcludes))
 	}
+	jsonExcludes := compileJSONExcludes(cfg.JSONExcludes)
+	if len(jsonExcludes) > 0 {
+		log.Printf("structured JSON excludes active: %d rule(s)", len(jsonExcludes))
+	}
 
 	if cfg.DecisionService.Enabled {
 		log.Printf("decision service enabled: url=%s", cfg.DecisionService.URL)
 	}
 	engine := &alertEngine{
-		monitors: monitors, dynamicExcludes: dynamicExcludesStore, processExcludes: processExcludes,
+		monitors: monitors, dynamicExcludes: dynamicExcludesStore, processExcludes: processExcludes, jsonExcludes: jsonExcludes,
 		notifier: notifier, iconURL: cfg.Notifications.IconURL, decisionCfg: cfg.DecisionService,
 		dedupCfg: cfg.AlertDedup, deduper: deduper, decisionCache: newDecisionCache(),
 		incidents: incidents, metrics: metrics,

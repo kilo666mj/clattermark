@@ -2,14 +2,52 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 )
+
+func TestDecisionRequestUsesConfiguredSource(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		source string
+		want   string
+	}{
+		{name: "default", want: "clattermark"},
+		{name: "configured", source: "log_watcher", want: "log_watcher"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			original := httpClient
+			defer func() { httpClient = original }()
+			var got decisionRequest
+			httpClient = &http.Client{Transport: decisionTestTransport(func(r *http.Request) (*http.Response, error) {
+				if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
+					t.Fatal(err)
+				}
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(strings.NewReader(`{"decision":"allow","confidence":1}`)),
+					Header:     make(http.Header),
+				}, nil
+			})}
+
+			decision := shouldSendByDecisionService(DecisionServiceConfig{Enabled: true, URL: "http://example.test", Source: test.source}, "raw", nil, "formatted")
+			if !decision.Send {
+				t.Fatalf("decision = %+v", decision)
+			}
+			if got.Source != test.want || got.Metadata["component"] != test.want {
+				t.Fatalf("source = %q, component = %q, want %q", got.Source, got.Metadata["component"], test.want)
+			}
+		})
+	}
+}
 
 func TestDecisionCacheSharesOnlyConcurrentRequests(t *testing.T) {
 	cache := newDecisionCache()

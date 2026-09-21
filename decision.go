@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -115,6 +116,13 @@ func decisionMinConfidence(cfg DecisionServiceConfig) float64 {
 	return cfg.MinConfidence
 }
 
+func decisionSource(cfg DecisionServiceConfig) string {
+	if source := strings.TrimSpace(cfg.Source); source != "" {
+		return source
+	}
+	return "clattermark"
+}
+
 func decisionLogHost(parsedLine map[string]string) string {
 	if parsedLine == nil || parsedLine["host"] == "" {
 		return "<unknown>"
@@ -131,9 +139,10 @@ func shouldSendByDecisionService(cfg DecisionServiceConfig, rawLine string, pars
 		return alertDecision{Send: decisionFailOpen(cfg), ServiceFailed: true, Outcome: "configuration_error"}
 	}
 
+	source := decisionSource(cfg)
 	reqBody := decisionRequest{
 		Kind:   "log_alert",
-		Source: "clattermark",
+		Source: source,
 		Content: decisionContent{
 			Raw:       rawLine,
 			Formatted: formattedMessage,
@@ -141,7 +150,7 @@ func shouldSendByDecisionService(cfg DecisionServiceConfig, rawLine string, pars
 		},
 		Policy: decisionPolicy{Action: "send_alert"},
 		Metadata: map[string]string{
-			"component": "clattermark",
+			"component": source,
 		},
 		Timestamp: time.Now().UTC(),
 	}

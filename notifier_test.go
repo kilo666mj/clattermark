@@ -13,7 +13,7 @@ type roundTripFunc func(*http.Request) (*http.Response, error)
 
 func TestAlertFeedbackActionsUseDecisionFingerprint(t *testing.T) {
 	actions := alertFeedbackActions(
-		DecisionServiceConfig{FeedbackActionTarget: "decision-feedback"},
+		DecisionServiceConfig{FeedbackActionTarget: "decision-feedback", Source: "log_watcher"},
 		alertDecision{Fingerprint: "fingerprint-1"},
 		map[string]string{"host": "web01", "process": "nginx"},
 	)
@@ -24,8 +24,26 @@ func TestAlertFeedbackActionsUseDecisionFingerprint(t *testing.T) {
 	if err := json.Unmarshal(actions[0].Context, &context); err != nil {
 		t.Fatal(err)
 	}
-	if context.Fingerprint != "fingerprint-1" || context.Host != "web01" || context.Process != "nginx" {
+	if context.Fingerprint != "fingerprint-1" || context.Host != "web01" || context.Process != "nginx" || context.Source != "log_watcher" {
 		t.Fatalf("context = %#v", context)
+	}
+}
+
+func TestAlertFeedbackActionsDefaultSource(t *testing.T) {
+	actions := alertFeedbackActions(
+		DecisionServiceConfig{FeedbackActionTarget: "decision-feedback"},
+		alertDecision{Fingerprint: "fingerprint-1"},
+		map[string]string{"host": "web01"},
+	)
+	var context alertFeedbackContext
+	if len(actions) != 1 {
+		t.Fatalf("actions = %#v", actions)
+	}
+	if err := json.Unmarshal(actions[0].Context, &context); err != nil {
+		t.Fatal(err)
+	}
+	if context.Source != "clattermark" {
+		t.Fatalf("source = %q, want clattermark", context.Source)
 	}
 }
 

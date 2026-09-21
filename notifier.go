@@ -57,7 +57,7 @@ func alertFeedbackActions(cfg DecisionServiceConfig, decision alertDecision, par
 		return nil
 	}
 	context, err := json.Marshal(alertFeedbackContext{
-		Feedback: "not_useful", Source: "clattermark", Kind: "log_alert", Policy: "send_alert",
+		Feedback: "not_useful", Source: decisionSource(cfg), Kind: "log_alert", Policy: "send_alert",
 		Fingerprint: decision.Fingerprint, Host: parsed["host"], Process: parsed["process"],
 	})
 	if err != nil {

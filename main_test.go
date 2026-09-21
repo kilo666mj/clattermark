@@ -123,10 +123,52 @@ func TestIsNonActionableStructuredLine(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := isNonActionableStructuredLine(tt.parsed); got != tt.want {
+			if got := isNonActionableStructuredLine(tt.parsed, nil); got != tt.want {
 				t.Fatalf("isNonActionableStructuredLine() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestJSONExcludes(t *testing.T) {
+	excludes := compileJSONExcludes([]JSONExcludeConfig{{
+		Process:          `^agent-relay$`,
+		BooleanFields:    map[string]bool{"complete": true},
+		EmptyArrayFields: []string{"failures"},
+	}})
+	for _, test := range []struct {
+		name    string
+		process string
+		text    string
+		want    bool
+	}{
+		{name: "successful summary", process: "agent-relay", text: `{"complete":true,"failures":[]}`, want: true},
+		{name: "whitespace and key order", process: "agent-relay", text: `{ "failures": [ ], "complete": true }`, want: true},
+		{name: "incomplete", process: "agent-relay", text: `{"complete":false,"failures":[]}`},
+		{name: "failure present", process: "agent-relay", text: `{"complete":true,"failures":["host1"]}`},
+		{name: "null failures", process: "agent-relay", text: `{"complete":true,"failures":null}`},
+		{name: "missing failures", process: "agent-relay", text: `{"complete":true}`},
+		{name: "malformed JSON", process: "agent-relay", text: `{"complete":true`},
+		{name: "wrong process", process: "other", text: `{"complete":true,"failures":[]}`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got := matchesJSONExclude(map[string]string{"process": test.process, "text": test.text}, excludes)
+			if got != test.want {
+				t.Fatalf("matchesJSONExclude() = %v, want %v", got, test.want)
+			}
+		})
+	}
+}
+
+func TestCompileJSONExcludesSkipsInvalid(t *testing.T) {
+	excludes := compileJSONExcludes([]JSONExcludeConfig{
+		{Process: "(", BooleanFields: map[string]bool{"complete": true}},
+		{Process: "^agent-relay$"},
+		{BooleanFields: map[string]bool{"complete": true}},
+		{Process: "^valid$", EmptyArrayFields: []string{"failures"}},
+	})
+	if len(excludes) != 1 || !excludes[0].process.MatchString("valid") {
+		t.Fatalf("compiled excludes = %#v", excludes)
 	}
 }
 
@@ -175,4 +217,28 @@ func TestAlertEngineStaticExcludeDoesNotNotify(t *testing.T) {
 
 	// A nil notifier makes an unexpected notification attempt fail the test by panic.
 	engine.checkLine(`2026-08-28T12:00:00+02:00 host app[1]: expected error`)
+}
+
+func TestAlertEngineStructuredJSONExcludeDoesNotNotify(t *testing.T) {
+	monitors, err := compileMonitors(map[string]MonitorConfig{
+		"failures": {Search: `failure`},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	engine := &alertEngine{
+		monitors:        monitors,
+		dynamicExcludes: newDynamicExcludesStore(nil),
+		jsonExcludes: compileJSONExcludes([]JSONExcludeConfig{{
+			Process:          `^agent-relay$`,
+			BooleanFields:    map[string]bool{"complete": true},
+			EmptyArrayFields: []string{"failures"},
+		}}),
+		deduper:       newAlertDeduper(AlertDedupConfig{Enabled: true}, nil),
+		dedupCfg:      AlertDedupConfig{Enabled: true},
+		decisionCache: newDecisionCache(),
+	}
+
+	// A nil notifier makes an unexpected notification attempt fail by panic.
+	engine.checkLine(`2026-09-21T12:00:00+02:00 host agent-relay[1]: {"complete":true,"failures":[]}`)
 }

@@ -1,0 +1,59 @@
+{
+  "mon_files": [
+    "/tmp/clattermark-input.log"
+  ],
+  "keydb": {
+    "host": "127.0.0.1:6379",
+    "password": ""
+  },
+  "decision_service": {
+    "enabled": false,
+    "url": "",
+    "source": "clattermark",
+    "timeout_seconds": 3,
+    "fail_open": true,
+    "min_confidence": 0.75,
+    "feedback_action_target": ""
+  },
+  "alert_dedup": {
+    "enabled": true,
+    "default_ttl_seconds": 900
+  },
+  "incident_aggregation": {
+    "enabled": false,
+    "quiet_seconds": 900,
+    "reminder_every": 25,
+    "sweep_seconds": 30,
+    "recovery_outbox_max": 1000,
+    "rules": []
+  },
+  "pipeline": {
+    "workers": 4,
+    "queue_size": 1000
+  },
+  "notifications": {
+    "primary_url": "",
+    "secondary_url": "",
+    "icon_url": "",
+    "channel": ""
+  },
+  "web": {
+    "listen_address": "127.0.0.1:8080",
+    "tokens": [],
+    "api_tokens": []
+  },
+  "stale_alert": {
+    "vip": "",
+    "threshold_minutes": 0
+  },
+  "processes": {
+    "excludes": []
+  },
+  "json_excludes": [],
+  "monitors": {
+    "errors": {
+      "search": "(?i)timeout|timed out|failure|failed|error|invalid|refused",
+      "excludes": []
+    }
+  }
+}

@@ -104,6 +104,30 @@ func TestSlashHandlerDoesNotRouteTextContainingMute(t *testing.T) {
 	}
 }
 
+func TestSlashHandlerReturnsUserValuesAsPlainText(t *testing.T) {
+	t.Parallel()
+
+	store := newDynamicExcludesStore(nil)
+	h := &slashHandler{
+		dynamicExcludes: store,
+		repository:      &fakeDynamicExcludesRepository{},
+		tokens:          []string{"correct-token"},
+	}
+	form := url.Values{"token": {"correct-token"}, "text": {"mute text <script>alert(1)</script>"}}
+	req := httptest.NewRequest(http.MethodPost, "/slash", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp := httptest.NewRecorder()
+
+	h.ServeHTTP(resp, req)
+
+	if got := resp.Header().Get("Content-Type"); got != "text/plain; charset=utf-8" {
+		t.Fatalf("content type = %q, want plain text", got)
+	}
+	if !strings.Contains(resp.Body.String(), "<script>alert(1)</script>") {
+		t.Fatalf("response did not preserve the slash-command value: %q", resp.Body.String())
+	}
+}
+
 func TestAPIHandlerRejectsInvalidToken(t *testing.T) {
 	t.Parallel()
 

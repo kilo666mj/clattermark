@@ -98,6 +98,7 @@ func containsToken(values []string, want string) bool {
 }
 
 func (h *slashHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	if h.limiter != nil && !h.limiter.Allow(r.RemoteAddr) {
 		http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
 		return

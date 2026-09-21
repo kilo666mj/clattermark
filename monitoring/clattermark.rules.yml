@@ -1,0 +1,50 @@
+groups:
+  - name: clattermark
+    rules:
+      - alert: ClattermarkUnavailable
+        expr: up{job="clattermark"} == 0 or clattermark_ready{job="clattermark"} == 0 or absent(up{job="clattermark"})
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Clattermark is unavailable
+          description: Check the service, input permissions, Redis-compatible storage, and HTTP listener.
+      - alert: ClattermarkIngestionStale
+        expr: time() - clattermark_last_line_timestamp_seconds{job="clattermark"} > 300 and on(job, instance) clattermark_uptime_seconds{job="clattermark"} > 300
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Clattermark has received no lines for five minutes
+          description: Check the configured input files and upstream log routing.
+      - alert: ClattermarkPipelineBackpressure
+        expr: clattermark_pipeline_queue_depth{job="clattermark"} > 800 or increase(clattermark_pipeline_queue_saturations_total{job="clattermark"}[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Clattermark alert processing is falling behind
+          description: Inspect decision-service latency and notification delivery; adjust the threshold for the configured queue capacity.
+      - alert: ClattermarkNotificationFailures
+        expr: increase(clattermark_notification_failures_total{job="clattermark"}[5m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: Clattermark could not deliver notifications
+          description: Inspect Tintwire and Mattermost fallback delivery.
+      - alert: ClattermarkDependencyFailures
+        expr: increase(clattermark_keydb_failures_total{job="clattermark"}[5m]) > 0 or increase(clattermark_outbox_publish_failures_total{job="clattermark"}[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: Clattermark persistence or outbox publication is failing
+          description: Inspect Redis-compatible storage and notification delivery.
+      - alert: ClattermarkOutboxBacklog
+        expr: clattermark_incident_outbox_depth{job="clattermark"} > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Clattermark durable outbox has not drained for ten minutes
+          description: Check publisher errors and dependency availability.

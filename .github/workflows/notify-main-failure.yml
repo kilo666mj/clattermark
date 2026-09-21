@@ -1,0 +1,60 @@
+name: notify main failure
+
+on:
+  workflow_run:
+    workflows: [Test, CodeQL]
+    branches: [main]
+    types: [completed]
+
+permissions:
+  issues: write
+
+jobs:
+  notify:
+    if: github.event.workflow_run.name != 'notify main failure'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const {owner, repo} = context.repo;
+            const marker = `<!-- ci-failure-tracker:${run.workflow_id} -->`;
+            const existing = (await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: 'open', labels: 'ci-failure', per_page: 100,
+            })).find(i => i.body && i.body.includes(marker));
+
+            if (run.conclusion === 'success') {
+              if (existing) {
+                await github.rest.issues.createComment({
+                  owner, repo, issue_number: existing.number,
+                  body: `Recovered: [\`${run.name}\` #${run.run_number}](${run.html_url}) succeeded on main at ${run.head_sha.slice(0, 7)}.`,
+                });
+                await github.rest.issues.update({
+                  owner, repo, issue_number: existing.number, state: 'closed', state_reason: 'completed',
+                });
+              }
+              return;
+            }
+            if (run.conclusion !== 'failure') return;
+
+            const body = [
+              marker,
+              `Workflow **${run.name}** failed on \`main\`.`,
+              '',
+              `- Run: [#${run.run_number}](${run.html_url})`,
+              `- Commit: ${run.head_sha.slice(0, 7)}`,
+              '',
+              'This issue closes automatically when a later run of this workflow succeeds on main.',
+            ].join('\n');
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: existing.number,
+                body: `Still failing: [#${run.run_number}](${run.html_url}) at ${run.head_sha.slice(0, 7)}.`,
+              });
+              return;
+            }
+            await github.rest.issues.create({
+              owner, repo, title: `CI failing on main: ${run.name}`, body, labels: ['ci-failure'],
+            });

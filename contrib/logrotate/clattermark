@@ -1,0 +1,13 @@
+/var/lib/clattermark/clattermark.log /var/lib/clattermark/alerts.log {
+    weekly
+    rotate 6
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 clattermark clattermark
+    sharedscripts
+    postrotate
+        test ! -r /var/lib/clattermark/clattermark.pid || kill -HUP "$(cat /var/lib/clattermark/clattermark.pid)"
+    endscript
+}

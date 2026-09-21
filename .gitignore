@@ -1,0 +1,9 @@
+/clattermark
+*.log
+*.pid
+config.json
+secrets.json
+dyn_excludes.json
+.idea/
+.vscode/
+.DS_Store

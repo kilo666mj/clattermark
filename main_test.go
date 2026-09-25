@@ -242,3 +242,14 @@ func TestAlertEngineStructuredJSONExcludeDoesNotNotify(t *testing.T) {
 	// A nil notifier makes an unexpected notification attempt fail by panic.
 	engine.checkLine(`2026-09-21T12:00:00+02:00 host agent-relay[1]: {"complete":true,"failures":[]}`)
 }
+
+func TestPipelineConfigValues(t *testing.T) {
+	workers, queueSize := PipelineConfig{}.values()
+	if workers != 4 || queueSize != 1000 {
+		t.Fatalf("defaults = %d workers, %d queue; want 4, 1000", workers, queueSize)
+	}
+	workers, queueSize = PipelineConfig{Workers: 2, QueueSize: 50}.values()
+	if workers != 2 || queueSize != 50 {
+		t.Fatalf("configured = %d workers, %d queue; want 2, 50", workers, queueSize)
+	}
+}

@@ -18,13 +18,16 @@ groups:
           summary: Clattermark has received no lines for five minutes
           description: Check the configured input files and upstream log routing.
       - alert: ClattermarkPipelineBackpressure
+        # A single burst that briefly fills the queue only delays alerts, because
+        # ingestion blocks instead of dropping lines. Fire only when the queue
+        # stays near capacity or keeps saturating for ten minutes.
         expr: clattermark_pipeline_queue_depth{job="clattermark"} > 800 or increase(clattermark_pipeline_queue_saturations_total{job="clattermark"}[5m]) > 0
-        for: 5m
+        for: 10m
         labels:
           severity: warning
         annotations:
           summary: Clattermark alert processing is falling behind
-          description: Inspect decision-service latency and notification delivery; adjust the threshold for the configured queue capacity.
+          description: Inspect decision-service latency and notification delivery; check decision-service admission limits before adding pipeline workers, and adjust the depth threshold for the configured queue capacity.
       - alert: ClattermarkNotificationFailures
         expr: increase(clattermark_notification_failures_total{job="clattermark"}[5m]) > 0
         labels:

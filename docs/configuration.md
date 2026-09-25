@@ -89,6 +89,21 @@ configured reminder interval. After `quiet_seconds` without another match, a
 durable quiet notification is emitted. Quiet means no matching log was seen; it
 does not prove service recovery.
 
+## Pipeline
+
+`pipeline.workers` (default 4) sets how many lines are evaluated concurrently,
+and `pipeline.queue_size` (default 1000) bounds the lines waiting for a worker.
+When the queue is full, ingestion blocks rather than dropping lines, so
+saturation delays alerts without losing input. Short saturation bursts while
+the decision service is slow are expected.
+
+Workers mostly wait on the decision service, so its latency sets throughput.
+Set `decision_service.timeout_seconds` above the service's normal p99 latency:
+with `fail_open`, a timed-out request delivers the alert unfiltered, so a
+deadline that is too short turns latency into alert noise. Add workers only if
+saturation is sustained, and within the decision service's admission limits,
+because each worker can hold one request open.
+
 ## Secrets
 
 The secrets file may contain any subset of the fields in

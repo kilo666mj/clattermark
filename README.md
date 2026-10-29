@@ -22,7 +22,7 @@ dropping lines when alert processing is saturated.
 - Parses common RFC 3339 syslog envelopes into host, process, PID, timestamp,
   and message fields.
 - Supports static, process, and structured-JSON exclusions plus authenticated
-  dynamic exclusions shared through Redis or KeyDB.
+  dynamic exclusions shared through Valkey or Redis.
 - Deduplicates normalized alerts across replicas with configurable cooldowns.
 - Groups related events into durable incidents and emits periodic and quiet
   notifications.
@@ -46,7 +46,7 @@ authentication, so bind them to loopback or a protected monitoring network.
 ## Requirements
 
 - Go 1.26 or newer to build from source.
-- A Redis-compatible server such as Redis or KeyDB.
+- A Redis-compatible server such as Valkey or Redis (KeyDB also works).
 - A Tintwire webhook URL, a Mattermost incoming webhook URL, or both for actual
   notification delivery.
 

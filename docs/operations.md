@@ -35,9 +35,9 @@ SIGHUP after rotation.
 ## Recovery
 
 Clattermark periodically snapshots dynamic exclusions in its state directory.
-If Redis/KeyDB is empty at startup and the snapshot is available, the snapshot
+If the Redis-compatible store is empty at startup and the snapshot is available, the snapshot
 is restored before processing begins.
 
-Incident quiet notifications use a durable Redis/KeyDB outbox. Preserve the
+Incident quiet notifications use a durable outbox in the store. Preserve the
 configured database when moving an active deployment or deliberately choose a
 new database when starting an independent pipeline.

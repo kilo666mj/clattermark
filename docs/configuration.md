@@ -46,6 +46,11 @@ uses it for routing, fingerprints, history, or feedback validation.
 in the secrets file. Storage is used for dynamic excludes, HA-safe deduplication,
 incident state, and the incident quiet-notification outbox.
 
+For HA, point every instance at the same store, with one primary (for
+example behind a VIP). Deduplication and incident updates rely on `SETNX` and
+`WATCH`, which multi-master setups such as KeyDB active-replica can grant on
+both sides at once.
+
 If storage is temporarily unavailable after startup, deduplication falls back
 to a local in-memory cooldown. Startup itself requires the configured server so
 the process does not begin with an unknown dynamic-exclusion state.
